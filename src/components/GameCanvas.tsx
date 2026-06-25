@@ -241,6 +241,31 @@ export default function GameCanvas() {
   const [shotTimer, setShotTimer] = useState(SHOT_TIMER_SECS);
   const shotTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Curve slider — position -1 (full left) to +1 (full right), 0 = straight
+  const SLIDER_TRACK_W = 200;
+  const [sliderPos, setSliderPos] = useState(0); // -1 to 1
+  const sliderPosRef = useRef(0);
+  const sliderStartXRef = useRef(0);
+
+  const curveSliderResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        sliderStartXRef.current = evt.nativeEvent.locationX;
+      },
+      onPanResponderMove: (_, gs) => {
+        const raw = Math.max(-1, Math.min(1, gs.dx / (SLIDER_TRACK_W / 2)));
+        sliderPosRef.current = raw;
+        setSliderPos(raw);
+        // Map slider to spin: full left = +8 (curves left), full right = -8 (curves right)
+        curveSpinRef.current = -raw * 8;
+        setCurveSpin(-raw * 8);
+      },
+      onPanResponderRelease: () => {},
+    })
+  ).current;
+
   const [bootPos, setBootPos] = useState<{ x: number; y: number } | null>(null);
   const bootOpacity = useRef(new Animated.Value(0)).current;
   const showBoot = useCallback((x: number, y: number) => {
@@ -358,7 +383,12 @@ export default function GameCanvas() {
     trapBall();
     phaseRef.current = 'trapped';
     setPhase('trapped');
-    showMessage('Trapped! Drag to aim • slide sideways to curve', 2500);
+    // Reset curve slider
+    sliderPosRef.current = 0;
+    setSliderPos(0);
+    curveSpinRef.current = 0;
+    setCurveSpin(0);
+    showMessage('Trapped! Drag to aim • use curve slider', 2500);
   }, [trapBall]);
 
   const startShotTimer = useCallback((onExpire: () => void) => {
@@ -413,16 +443,10 @@ export default function GameCanvas() {
           const dist = Math.sqrt(dx * dx + dy * dy);
           const pwr = Math.min(100, Math.max(20, dist * 0.7));
 
-          // Horizontal drag offset from aim direction drives curve
-          // Positive dx (dragging right of ball) → negative spin (curves left), and vice versa
-          const spin = -(gs.dx / Math.max(dist, 1)) * pwr * 0.08;
-
           aimAngleRef.current = angle;
           powerRef.current = pwr;
-          curveSpinRef.current = spin;
           setAimAngle(angle);
           setPower(pwr);
-          setCurveSpin(spin);
 
           if (phaseRef.current === 'trapped') {
             phaseRef.current = 'aiming';
@@ -502,9 +526,6 @@ export default function GameCanvas() {
   const timerDanger = shotTimer <= 3;
   const showWall = phase === 'aiming' || phase === 'trapped' || phase === 'shot';
 
-  // Curve indicator label
-  const curveLabel = Math.abs(curveSpin) < 0.5 ? '' : curveSpin > 0 ? '← curve' : 'curve →';
-
   return (
     <View style={[styles.container, { width, height }]} {...panResponder.panHandlers}>
 
@@ -569,10 +590,18 @@ export default function GameCanvas() {
         </View>
       )}
 
-      {/* Curve indicator */}
-      {phase === 'aiming' && !!curveLabel && (
-        <View style={styles.curveIndicator}>
-          <Text style={styles.curveText}>{curveLabel}</Text>
+      {/* Curve slider */}
+      {(phase === 'aiming' || phase === 'trapped') && (
+        <View style={styles.curveSliderContainer} {...curveSliderResponder.panHandlers}>
+          <Text style={styles.curveLabel}>← Curve →</Text>
+          <View style={[styles.curveTrack, { width: SLIDER_TRACK_W }]}>
+            <View style={styles.curveTrackCenter} />
+            <View style={[
+              styles.curveThumb,
+              { left: SLIDER_TRACK_W / 2 + sliderPos * (SLIDER_TRACK_W / 2) - 14 },
+              Math.abs(sliderPos) > 0.05 && { backgroundColor: '#00eeff' },
+            ]} />
+          </View>
         </View>
       )}
 
@@ -648,8 +677,11 @@ const styles = StyleSheet.create({
   timerText: { color: 'rgba(255,255,255,0.85)', fontSize: 40, fontWeight: 'bold' },
   timerTextDanger: { color: '#ff4444' },
 
-  curveIndicator: { position: 'absolute', bottom: 100, left: 0, right: 0, alignItems: 'center' },
-  curveText: { color: '#00eeff', fontSize: 18, fontWeight: 'bold' },
+  curveSliderContainer: { position: 'absolute', bottom: 130, left: 0, right: 0, alignItems: 'center', gap: 6 },
+  curveLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '600' },
+  curveTrack: { height: 10, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 5, justifyContent: 'center' },
+  curveTrackCenter: { position: 'absolute', left: '50%', width: 2, height: 18, backgroundColor: 'rgba(255,255,255,0.5)', top: -4 },
+  curveThumb: { position: 'absolute', width: 28, height: 28, borderRadius: 14, backgroundColor: 'white', top: -9, borderWidth: 2, borderColor: 'rgba(0,0,0,0.2)' },
 
   hud: { position: 'absolute', top: 50, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20 },
   hudText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
