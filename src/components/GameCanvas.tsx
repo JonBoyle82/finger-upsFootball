@@ -230,6 +230,7 @@ export default function GameCanvas() {
   const curveSpinRef = useRef(0);
   const [score, setScore] = useState(0);
   const [trapUnlockTarget, setTrapUnlockTarget] = useState(TRAP_UNLOCK_BASE);
+  const [showDropModal, setShowDropModal] = useState(false);
   const [juggleCount, setJuggleCount] = useState(0);
   const juggleCountRef = useRef(0);
   const [bestJuggles, setBestJuggles] = useState(0);
@@ -369,7 +370,9 @@ export default function GameCanvas() {
     height,
     onUpdate: handleUpdate,
     onGrounded: useCallback(() => {
-      if (phaseRef.current === 'juggling') {
+      if (phaseRef.current === 'juggling' && juggleCountRef.current > 0) {
+        setShowDropModal(true);
+      } else if (phaseRef.current === 'juggling') {
         setJuggleCount(0);
         juggleCountRef.current = 0;
       }
@@ -534,6 +537,21 @@ export default function GameCanvas() {
     return { dots, targetX, clear, hitsWall };
   })() : null;
 
+  const handleDropCarryOn = useCallback(() => {
+    setShowDropModal(false);
+    setJuggleCount(0);
+    juggleCountRef.current = 0;
+  }, []);
+
+  const handleDropReset = useCallback(() => {
+    setShowDropModal(false);
+    setScore(0);
+    setTrapUnlockTarget(TRAP_UNLOCK_BASE);
+    setJuggleCount(0);
+    juggleCountRef.current = 0;
+    setBestJuggles(0);
+  }, []);
+
   const trapUnlocked = juggleCount >= trapUnlockTarget;
   const timerDanger = shotTimer <= 3;
   const showWall = phase === 'aiming' || phase === 'trapped' || phase === 'shot';
@@ -646,6 +664,24 @@ export default function GameCanvas() {
       )}
     </View>
 
+      {/* Drop modal */}
+      {showDropModal && (
+        <View style={styles.dropModalOverlay}>
+          <View style={styles.dropModal}>
+            <Text style={styles.dropModalTitle}>Ball Dropped!</Text>
+            <Text style={styles.dropModalSub}>Score: {score}  •  Juggles: {juggleCount}</Text>
+            <View style={styles.dropModalButtons}>
+              <TouchableOpacity style={[styles.dropModalBtn, styles.dropModalBtnCarry]} onPress={handleDropCarryOn}>
+                <Text style={styles.dropModalBtnText}>Carry On</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.dropModalBtn, styles.dropModalBtnReset]} onPress={handleDropReset}>
+                <Text style={styles.dropModalBtnText}>Clear Score</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Curve control — outside pan responder so it doesn't affect aim */}
       {(phase === 'aiming' || phase === 'trapped') && (
         <View style={styles.curveBlock}>
@@ -725,4 +761,14 @@ const styles = StyleSheet.create({
   celebrationSub: { color: 'white', fontSize: 28, marginTop: 8 },
   instructions: { position: 'absolute', bottom: 80, left: 0, right: 0, alignItems: 'center', gap: 6 },
   instructText: { color: 'rgba(255,255,255,0.7)', fontSize: 14, textAlign: 'center' },
+
+  dropModalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
+  dropModal: { backgroundColor: '#1a4a2a', borderRadius: 16, padding: 28, alignItems: 'center', width: 280, borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)' },
+  dropModalTitle: { color: 'white', fontSize: 26, fontWeight: 'bold', marginBottom: 8 },
+  dropModalSub: { color: 'rgba(255,255,255,0.7)', fontSize: 14, marginBottom: 24 },
+  dropModalButtons: { flexDirection: 'row', gap: 12 },
+  dropModalBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
+  dropModalBtnCarry: { backgroundColor: '#00aa44' },
+  dropModalBtnReset: { backgroundColor: '#cc2222' },
+  dropModalBtnText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
 });
