@@ -4,7 +4,8 @@ export const BALL_RADIUS = 28;
 const GRAVITY = 0.3;
 const DAMPING = 0.995;
 const BOUNCE = 0.38;
-const CURVE_FACTOR = 0.012; // lateral acceleration per unit of spin
+const CURVE_FACTOR = 0.008; // lateral acceleration per unit of spin
+const SPIN_DECAY = 0.97;    // spin bleeds off each frame so it doesn't accumulate
 
 export type BallState = {
   x: number;
@@ -51,6 +52,7 @@ export function usePhysics({ width, height, onUpdate, onGrounded }: Options) {
         s.x += s.vx;
         s.y += s.vy;
         s.spin += s.vx * 0.04;
+        s.spin *= SPIN_DECAY;
 
         if (s.y + BALL_RADIUS > height) {
           s.y = height - BALL_RADIUS;
