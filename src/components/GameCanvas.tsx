@@ -525,7 +525,8 @@ export default function GameCanvas() {
   const showWall = phase === 'aiming' || phase === 'trapped' || phase === 'shot';
 
   return (
-    <View style={[styles.container, { width, height }]} {...panResponder.panHandlers}>
+    <View style={[styles.container, { width, height }]}>
+    <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers}>
 
       <PitchMarkings width={width} height={height} goalTop={goalTop} />
 
@@ -588,32 +589,6 @@ export default function GameCanvas() {
         </View>
       )}
 
-      {/* Curve control block */}
-      {(phase === 'aiming' || phase === 'trapped') && (
-        <View style={styles.curveBlock}>
-          <TouchableOpacity
-            style={styles.curveArrowBtn}
-            onPressIn={() => startCurveHold(1)}
-            onPressOut={stopCurveHold}
-          >
-            <Text style={styles.curveArrowText}>◀</Text>
-          </TouchableOpacity>
-          <View style={styles.curveLabelBox}>
-            <Text style={styles.curveLabelTitle}>CURVE</Text>
-            <Text style={styles.curveLabelValue}>
-              {Math.abs(sliderPos) < 0.05 ? 'Straight' : sliderPos > 0 ? `Left ${Math.round(Math.abs(sliderPos) * 100)}%` : `Right ${Math.round(Math.abs(sliderPos) * 100)}%`}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.curveArrowBtn}
-            onPressIn={() => startCurveHold(-1)}
-            onPressOut={stopCurveHold}
-          >
-            <Text style={styles.curveArrowText}>▶</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       {/* Trap button */}
       {phase === 'juggling' && (
         <TouchableOpacity
@@ -651,6 +626,33 @@ export default function GameCanvas() {
         <View style={styles.instructions}>
           <Text style={styles.instructText}>Tap near the ball to juggle</Text>
           <Text style={styles.instructText}>Get 5 juggles to unlock TRAP</Text>
+        </View>
+      )}
+    </View>
+
+      {/* Curve control — outside pan responder so it doesn't affect aim */}
+      {(phase === 'aiming' || phase === 'trapped') && (
+        <View style={styles.curveBlock}>
+          <TouchableOpacity
+            style={styles.curveArrowBtn}
+            onPressIn={() => startCurveHold(1)}
+            onPressOut={stopCurveHold}
+          >
+            <Text style={styles.curveArrowText}>◀</Text>
+          </TouchableOpacity>
+          <View style={styles.curveLabelBox}>
+            <Text style={styles.curveLabelTitle}>CURVE</Text>
+            <Text style={styles.curveLabelValue}>
+              {Math.abs(sliderPos) < 0.05 ? 'Straight' : sliderPos > 0 ? `Left ${Math.round(Math.abs(sliderPos) * 100)}%` : `Right ${Math.round(Math.abs(sliderPos) * 100)}%`}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.curveArrowBtn}
+            onPressIn={() => startCurveHold(-1)}
+            onPressOut={stopCurveHold}
+          >
+            <Text style={styles.curveArrowText}>▶</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
