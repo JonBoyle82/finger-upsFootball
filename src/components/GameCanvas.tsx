@@ -14,6 +14,7 @@ import Svg, {
   Path,
   Rect,
 } from 'react-native-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePhysics, BallState, BALL_RADIUS } from '../hooks/usePhysics';
 
 type GamePhase = 'juggling' | 'trapped' | 'aiming' | 'shot';
@@ -229,6 +230,7 @@ export default function GameCanvas() {
   const [curveSpin, setCurveSpin] = useState(0);
   const curveSpinRef = useRef(0);
   const [score, setScore] = useState(0);
+  const [topScore, setTopScore] = useState(0);
   const [trapUnlockTarget, setTrapUnlockTarget] = useState(TRAP_UNLOCK_BASE);
   const [showDropModal, setShowDropModal] = useState(false);
   const [juggleCount, setJuggleCount] = useState(0);
@@ -501,6 +503,21 @@ export default function GameCanvas() {
     };
   }, [stopShotTimer]);
 
+  // Load top score on mount
+  useEffect(() => {
+    AsyncStorage.getItem('topScore').then(val => {
+      if (val) setTopScore(parseInt(val, 10));
+    });
+  }, []);
+
+  // Save top score whenever score increases
+  useEffect(() => {
+    if (score > topScore) {
+      setTopScore(score);
+      AsyncStorage.setItem('topScore', String(score));
+    }
+  }, [score]);
+
   // Compute curved trajectory via physics simulation
   const aimData = (phase === 'aiming' || phase === 'trapped') ? (() => {
     const pos = getBallPos();
@@ -613,6 +630,7 @@ export default function GameCanvas() {
         </View>
         <View style={styles.hudPill}>
           <Text style={styles.hudText}>Goals: {score}</Text>
+          <Text style={styles.hudSubText}>Best: {topScore}</Text>
         </View>
       </View>
 
