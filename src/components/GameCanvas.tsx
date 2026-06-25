@@ -272,6 +272,9 @@ export default function GameCanvas() {
     Animated.timing(bootOpacity, { toValue: 0, duration: 400, useNativeDriver: true }).start();
   }, [bootOpacity]);
 
+  const heightRef = useRef(height);
+  heightRef.current = height;
+
   const ballAnimX = useRef(new Animated.Value(width / 2 - BALL_RADIUS)).current;
   const ballAnimY = useRef(new Animated.Value(height * 0.4 - BALL_RADIUS)).current;
   const gkAnim = useRef(new Animated.Value(width / 2 - GK_RADIUS)).current;
@@ -427,7 +430,13 @@ export default function GameCanvas() {
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: (evt) => {
+        // Ignore touches in the curve block area (bottom 180px) during aiming
+        if (phaseRef.current === 'aiming' || phaseRef.current === 'trapped') {
+          if (evt.nativeEvent.pageY > heightRef.current - 180) return false;
+        }
+        return true;
+      },
       onMoveShouldSetPanResponder: () => true,
 
       onPanResponderMove: (evt, gs) => {
