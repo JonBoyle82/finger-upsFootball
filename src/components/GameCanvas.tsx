@@ -323,11 +323,11 @@ export default function GameCanvas() {
     gkAnim.setValue(newGkX - GK_RADIUS);
 
     if (phaseRef.current === 'shot' && !shotResultRef.current) {
-      // Wall collision check
-      const wallLeft = wallX - WALL_TOTAL_W / 2 - BALL_RADIUS;
-      const wallRight = wallX + WALL_TOTAL_W / 2 + BALL_RADIUS;
-      const wallTopY = wallY - WALL_PLAYER_H - BALL_RADIUS;
-      const wallBottomY = wallY + BALL_RADIUS;
+      // Wall collision — tight hitbox so only direct hits are blocked
+      const wallLeft = wallX - WALL_TOTAL_W / 2 + 6;
+      const wallRight = wallX + WALL_TOTAL_W / 2 - 6;
+      const wallTopY = wallY - WALL_PLAYER_H * 0.75;
+      const wallBottomY = wallY - 8;
       if (b.x > wallLeft && b.x < wallRight && b.y > wallTopY && b.y < wallBottomY) {
         shotResultRef.current = true;
         showMessage('Blocked! 🧱', 1200);
@@ -522,9 +522,9 @@ export default function GameCanvas() {
     const clear = Math.abs(targetX - gkXRef.current) > GK_RADIUS + BALL_RADIUS + 4;
 
     // Check if trajectory hits wall
-    const wallLeft = wallX - WALL_TOTAL_W / 2;
-    const wallRight = wallX + WALL_TOTAL_W / 2;
-    const hitsWall = pts.some(p => p.x > wallLeft && p.x < wallRight && p.y > wallY - WALL_PLAYER_H && p.y < wallY);
+    const wallLeft = wallX - WALL_TOTAL_W / 2 + 6;
+    const wallRight = wallX + WALL_TOTAL_W / 2 - 6;
+    const hitsWall = pts.some(p => p.x > wallLeft && p.x < wallRight && p.y > wallY - WALL_PLAYER_H * 0.75 && p.y < wallY - 8);
 
     return { dots, targetX, clear, hitsWall };
   })() : null;
