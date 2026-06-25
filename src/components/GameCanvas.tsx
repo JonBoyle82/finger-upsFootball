@@ -241,30 +241,28 @@ export default function GameCanvas() {
   const [shotTimer, setShotTimer] = useState(SHOT_TIMER_SECS);
   const shotTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Curve slider — position -1 (full left) to +1 (full right), 0 = straight
-  const SLIDER_TRACK_W = 200;
-  const [sliderPos, setSliderPos] = useState(0); // -1 to 1
-  const sliderPosRef = useRef(0);
-  const sliderStartXRef = useRef(0);
+  // Curve control — stepped left/right buttons
+  const MAX_CURVE = 10;
+  const CURVE_STEP = 1.5;
+  const curveHoldRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const curveSliderResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => {
-        sliderStartXRef.current = evt.nativeEvent.locationX;
-      },
-      onPanResponderMove: (_, gs) => {
-        const raw = Math.max(-1, Math.min(1, gs.dx / (SLIDER_TRACK_W / 2)));
-        sliderPosRef.current = raw;
-        setSliderPos(raw);
-        // Map slider to spin: full left = +8 (curves left), full right = -8 (curves right)
-        curveSpinRef.current = -raw * 8;
-        setCurveSpin(-raw * 8);
-      },
-      onPanResponderRelease: () => {},
-    })
-  ).current;
+  const adjustCurve = useCallback((dir: 1 | -1) => {
+    const next = Math.max(-MAX_CURVE, Math.min(MAX_CURVE, curveSpinRef.current + dir * CURVE_STEP));
+    curveSpinRef.current = next;
+    setCurveSpin(next);
+    setSliderPos(next / MAX_CURVE);
+  }, []);
+
+  const startCurveHold = useCallback((dir: 1 | -1) => {
+    adjustCurve(dir);
+    curveHoldRef.current = setInterval(() => adjustCurve(dir), 150);
+  }, [adjustCurve]);
+
+  const stopCurveHold = useCallback(() => {
+    if (curveHoldRef.current) { clearInterval(curveHoldRef.current); curveHoldRef.current = null; }
+  }, []);
+
+  const [sliderPos, setSliderPos] = useState(0); // -1 to 1, for visual only
 
   const [bootPos, setBootPos] = useState<{ x: number; y: number } | null>(null);
   const bootOpacity = useRef(new Animated.Value(0)).current;
@@ -590,18 +588,29 @@ export default function GameCanvas() {
         </View>
       )}
 
-      {/* Curve slider */}
+      {/* Curve control block */}
       {(phase === 'aiming' || phase === 'trapped') && (
-        <View style={styles.curveSliderContainer} {...curveSliderResponder.panHandlers}>
-          <Text style={styles.curveLabel}>← Curve →</Text>
-          <View style={[styles.curveTrack, { width: SLIDER_TRACK_W }]}>
-            <View style={styles.curveTrackCenter} />
-            <View style={[
-              styles.curveThumb,
-              { left: SLIDER_TRACK_W / 2 + sliderPos * (SLIDER_TRACK_W / 2) - 14 },
-              Math.abs(sliderPos) > 0.05 && { backgroundColor: '#00eeff' },
-            ]} />
+        <View style={styles.curveBlock}>
+          <TouchableOpacity
+            style={styles.curveArrowBtn}
+            onPressIn={() => startCurveHold(1)}
+            onPressOut={stopCurveHold}
+          >
+            <Text style={styles.curveArrowText}>◀</Text>
+          </TouchableOpacity>
+          <View style={styles.curveLabelBox}>
+            <Text style={styles.curveLabelTitle}>CURVE</Text>
+            <Text style={styles.curveLabelValue}>
+              {Math.abs(sliderPos) < 0.05 ? 'Straight' : sliderPos > 0 ? `Left ${Math.round(Math.abs(sliderPos) * 100)}%` : `Right ${Math.round(Math.abs(sliderPos) * 100)}%`}
+            </Text>
           </View>
+          <TouchableOpacity
+            style={styles.curveArrowBtn}
+            onPressIn={() => startCurveHold(-1)}
+            onPressOut={stopCurveHold}
+          >
+            <Text style={styles.curveArrowText}>▶</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -677,11 +686,12 @@ const styles = StyleSheet.create({
   timerText: { color: 'rgba(255,255,255,0.85)', fontSize: 40, fontWeight: 'bold' },
   timerTextDanger: { color: '#ff4444' },
 
-  curveSliderContainer: { position: 'absolute', bottom: 130, left: 0, right: 0, alignItems: 'center', gap: 6 },
-  curveLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '600' },
-  curveTrack: { height: 10, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 5, justifyContent: 'center' },
-  curveTrackCenter: { position: 'absolute', left: '50%', width: 2, height: 18, backgroundColor: 'rgba(255,255,255,0.5)', top: -4 },
-  curveThumb: { position: 'absolute', width: 28, height: 28, borderRadius: 14, backgroundColor: 'white', top: -9, borderWidth: 2, borderColor: 'rgba(0,0,0,0.2)' },
+  curveBlock: { position: 'absolute', bottom: 120, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 0 },
+  curveArrowBtn: { width: 52, height: 52, backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', alignItems: 'center', borderRadius: 8 },
+  curveArrowText: { color: 'white', fontSize: 22 },
+  curveLabelBox: { width: 120, height: 52, backgroundColor: 'rgba(0,0,0,0.45)', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', alignItems: 'center' },
+  curveLabelTitle: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '700', letterSpacing: 2 },
+  curveLabelValue: { color: '#00eeff', fontSize: 14, fontWeight: 'bold' },
 
   hud: { position: 'absolute', top: 50, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20 },
   hudText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
