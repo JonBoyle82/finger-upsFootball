@@ -41,6 +41,9 @@
         }
       ]
     ],
+    "experiments": {
+      "baseUrl": "/finger-upsFootball"
+    },
     "extra": {
       "eas": {
         "projectId": "2facdce6-944b-4229-9253-eb44c72342e5"
